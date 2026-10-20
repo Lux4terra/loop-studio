@@ -1,2 +1,3 @@
-dev/
-app/
+# Anchored to the repo root: an unanchored "app/" would also drop public/app, which Vercel serves.
+/dev/
+/app/

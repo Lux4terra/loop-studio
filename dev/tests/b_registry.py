@@ -139,6 +139,14 @@ for base in SHIP:
 ok("no KERUB name, mark, colour, font or estate word in anything Studio ships", not hits, hits[:10])
 ok("no payment or people records in Studio's API", not re.search(r"(?i)payment|invoice|ledger|people\.json|accounts\.json", rd(os.path.join(REPO, "api", "studio.js"))), "")
 
+# ---------- what Vercel uploads ----------
+vi = os.path.join(REPO, ".vercelignore")
+served = [os.path.relpath(f, REPO) for base in ("public", "api", "modules") for f in glob.glob(os.path.join(REPO, base, "**", "*"), recursive=True) if os.path.isfile(f) and "__pycache__" not in f]
+r = subprocess.run(["git", "-C", REPO, "-c", "core.excludesFile=" + vi, "check-ignore", "--no-index", "--stdin"], input="\n".join(served), capture_output=True, text=True)
+ok("nothing Vercel serves or runs is left out of the upload", served and not r.stdout.strip(), r.stdout.split()[:6])
+r = subprocess.run(["git", "-C", REPO, "-c", "core.excludesFile=" + vi, "check-ignore", "--no-index", "--stdin"], input="app/shell.js\ndev/build.py", capture_output=True, text=True)
+ok("the sources and dev tools stay out of the upload", sorted(r.stdout.split()) == ["app/shell.js", "dev/build.py"], r.stdout)
+
 # ---------- an app that installs ----------
 man = json.load(open(os.path.join(PUBLIC, "manifest.webmanifest")))
 bgL, bgD = B.token_bg()
