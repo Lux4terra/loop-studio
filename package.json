@@ -1,0 +1,6 @@
+{
+  "name": "loop-studio",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" }
+}

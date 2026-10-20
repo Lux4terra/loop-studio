@@ -1,0 +1,23 @@
+{
+  "id": "today",
+  "name": "Today",
+  "version": 1,
+  "status": "slot",
+  "order": 1,
+  "dock": true,
+  "icon": "sun",
+  "hue": 36,
+  "summary": "One focus, the build queue, a focus timer and the morning briefing.",
+  "records": ["studio/today/day.json"],
+  "routes": ["today"],
+  "permissions": { "today.use": "Open Today and set the day's focus" },
+  "actions": [
+    { "id": "focus.set", "level": "do", "what": "Set the day's focus" },
+    { "id": "queue.order", "level": "do", "what": "Order the build queue" },
+    { "id": "briefing.write", "level": "prepare", "what": "Write the morning briefing for you to read" }
+  ],
+  "events": { "emits": [], "listens": [] },
+  "window": { "zero": "No focus set yet", "one": "build in the queue", "many": "builds in the queue", "line": "One focus for the day, and the queue behind it." },
+  "i18n": ["en"],
+  "tests": "test.py"
+}

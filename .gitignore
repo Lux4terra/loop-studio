@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+__pycache__/
+dev/tests/shots*/
+dev/tests/out_*.txt
+dev/tests/dev.log
+dev/tests/dev.pid
+.vercel

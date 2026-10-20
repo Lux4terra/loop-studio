@@ -1,0 +1,23 @@
+{
+  "id": "library",
+  "name": "Library",
+  "version": 1,
+  "status": "slot",
+  "order": 4,
+  "dock": true,
+  "icon": "books",
+  "hue": 152,
+  "summary": "The farm: tools, prompts, components, tests, decisions and facts, ready for reuse.",
+  "records": ["studio/library/items.json"],
+  "routes": ["library"],
+  "permissions": { "library.file": "File items in the Library", "library.promote": "Promote an item into Loop Core" },
+  "actions": [
+    { "id": "item.file", "level": "do", "what": "File an item with its purpose, example and date" },
+    { "id": "reuse.suggest", "level": "prepare", "what": "Suggest reuse while a brief is written" },
+    { "id": "core.promote", "level": "raise", "what": "Promote an item into Loop Core" }
+  ],
+  "events": { "emits": [], "listens": [] },
+  "window": { "zero": "The Library is empty", "one": "item filed", "many": "items filed", "line": "Search here before building anything." },
+  "i18n": ["en"],
+  "tests": "test.py"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "briefs",
+  "name": "Briefs",
+  "version": 1,
+  "status": "slot",
+  "order": 2,
+  "dock": true,
+  "icon": "brief",
+  "hue": 212,
+  "summary": "Idea to brief: the problem, the user, the proof of done, the limits and the PRD.",
+  "records": ["studio/briefs/briefs.json"],
+  "routes": ["briefs"],
+  "permissions": { "briefs.write": "Write and edit briefs", "briefs.send": "Send a brief to build" },
+  "actions": [
+    { "id": "brief.save", "level": "do", "what": "Save a brief and its notes" },
+    { "id": "prd.draft", "level": "prepare", "what": "Draft the PRD from your notes" },
+    { "id": "brief.build", "level": "raise", "what": "Send a brief to build" }
+  ],
+  "events": { "emits": [], "listens": [] },
+  "window": { "zero": "No briefs yet", "one": "brief waiting", "many": "briefs waiting", "line": "Ideas become briefs here, each with its proof of done." },
+  "i18n": ["en"],
+  "tests": "test.py"
+}

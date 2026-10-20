@@ -1,0 +1,23 @@
+{
+  "id": "builds",
+  "name": "Builds",
+  "version": 1,
+  "status": "slot",
+  "order": 3,
+  "dock": true,
+  "icon": "branch",
+  "hue": 262,
+  "summary": "Every build side by side: repo, branch, session, suite status and the next step.",
+  "records": ["studio/builds/builds.json"],
+  "routes": ["builds"],
+  "permissions": { "builds.track": "Track builds", "builds.merge": "Merge a build to main" },
+  "actions": [
+    { "id": "pack.write", "level": "do", "what": "Write a session pack from a brief" },
+    { "id": "status.read", "level": "do", "what": "Read commits and test results from GitHub" },
+    { "id": "build.merge", "level": "raise", "what": "Merge a build to main" }
+  ],
+  "events": { "emits": [], "listens": [] },
+  "window": { "zero": "No builds running", "one": "build running", "many": "builds running", "line": "Three or four at once, each on its own branch." },
+  "i18n": ["en"],
+  "tests": "test.py"
+}
