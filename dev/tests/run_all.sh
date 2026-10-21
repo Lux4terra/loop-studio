@@ -2,7 +2,7 @@
 # Runs every suite against the local mock. Usage: sh dev/tests/run_all.sh   or   sh dev/tests/run_all.sh a_api c_ui
 cd "$(dirname "$0")"
 export PYTHONDONTWRITEBYTECODE=1
-SUITES=${*:-"a_api b_registry m_modules c_ui s_secrets"}
+SUITES=${*:-"a_api b_registry m_modules c_ui d_flows s_secrets"}
 FAILED=0; TOTAL=0
 for t in $SUITES; do
   sh run_dev.sh >/dev/null   # a fresh mock for each suite

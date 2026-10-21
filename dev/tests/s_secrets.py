@@ -15,7 +15,7 @@ PATTERNS = {
     "Vercel token": r"\bvercel_[A-Za-z0-9]{24,}\b",
     "a secret given a value": r"(?i)\b(?:STUDIO_KEY|LOOP_GITHUB_TOKEN|OPS_SECRET|ADMIN_PASSWORD|API_KEY|SECRET)\s*[=:]\s*[\"']?(?!test-|\$|process\.env|E\.|\{|<)[A-Za-z0-9_\-+/]{12,}",
 }
-TEST_VALUES = {"test-studio-key-0123456789", "test-data-token", "loop-pass-2026"}
+TEST_VALUES = {"test-studio-key-0123456789", "test-data-token", "loop-pass-2026", "test-gemini-key", "test-groq-key"}
 tracked = subprocess.run(["git", "-C", REPO, "ls-files", "--cached", "--others", "--exclude-standard"], capture_output=True, text=True).stdout.split()
 hits, scanned = [], 0
 for f in tracked:
@@ -32,5 +32,8 @@ ok("the scan itself catches a planted token and key", sum(len(re.findall(rx, pro
 dev = open(os.path.join(HERE, "devserver.mjs")).read()
 ok("the local mock runs on test values only", all(v in dev + open(os.path.join(HERE, "harness.py")).read() for v in TEST_VALUES) and "test values only" in dev, "")
 ok("the keys are read from Vercel's environment, never from a file", all(("E." + k) in open(os.path.join(REPO, "api", "_core", f)).read() for k, f in [("STUDIO_KEY", "auth.js"), ("LOOP_GITHUB_TOKEN", "store.js"), ("LOOP_DATA_REPO", "store.js")]), "")
+mj = open(os.path.join(REPO, "api", "_core", "models.js")).read()
+ok("the model keys are read from Vercel's environment, never from a file", 'gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY"' in mj and "E[KEYS[p]]" in mj and not re.search(r"(?i)(AIza|gsk_)", mj), "")
+ok("the model keys never reach the screen: Briefs sends only whether each is set", 'const keys = () => ({ gemini: !!key("gemini"), groq: !!key("groq") });' in mj, "")
 ok("no environment file is in the repo", not [f for f in tracked if re.search(r"(^|/)\.env", f)], [f for f in tracked if ".env" in f])
 summary()

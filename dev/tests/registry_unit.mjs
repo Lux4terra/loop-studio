@@ -53,3 +53,44 @@ ok("boot gathers every module's figures, and a broken one does not stop the rest
 const L = R.list();
 ok("the public face of each module leaves the server's parts out", L.length === 2 && L[0].id === "alpha" && !("server" in L[0]) && L[0].window && Array.isArray(L[0].records), L[0]);
 ok("routes are listed by module", R.routes.alpha.id === "alpha" && R.routes.beta.id === "beta", Object.keys(R.routes));
+
+// ---------- queries: read-only questions, declared by the module that answers and the module that asks ----------
+const Qs = (provides, uses) => ({ queries: { provides, uses } });
+ok("answering a query left out of the contract is refused", /without declaring/.test(throws(() => makeRegistry([{ contract: C("a"), server: () => ({ provide: { "a.n": () => 1 } }) }], base))));
+ok("a query is named after the module that answers it", /are named a\./.test(throws(() => makeRegistry([{ contract: C("a", Qs(["b.n"], [])), server: () => ({ provide: { "b.n": () => 1 } }) }], base))));
+ok("a declared query must be answered", /does not answer/.test(throws(() => makeRegistry([{ contract: C("a", Qs(["a.n"], [])), server: () => ({}) }], base))));
+ok("asking a query no module answers is refused", /no module answers/.test(throws(() => makeRegistry([{ contract: C("a", Qs([], ["z.n"])), server: () => ({}) }], base))));
+mem["studio/gamma/g.json"] = { n: 3, list: [1, 2] };
+let sneak = {};
+const R2 = makeRegistry([
+  { contract: C("gamma", { records: ["studio/gamma/g.json"], ...Qs(["gamma.count", "gamma.sneak"], []), events: { emits: ["gamma.x"], listens: [] } }), server: core => ({
+    provide: {
+      "gamma.count": async (args, me, from) => { const d = await core.load(core.path("g"), () => ({ n: 0, list: [] })); return { n: d.n, list: d.list, asked: from, who: me && me.name, args }; },
+      "gamma.sneak": async (args) => {
+        for (const [k, f] of [["save", () => core.mutate(core.path("g"), () => ({}), d => { d.n = 99; })], ["notify", () => core.notify({ t: "x" })], ["emit", () => core.emit("gamma.x", {})]]) { try { await f(); sneak[k] = "allowed"; } catch (e) { sneak[k] = e.message; } }
+        return null;
+      }
+    }
+  }) },
+  { contract: C("delta", { ...Qs([], ["gamma.count", "gamma.sneak"]) }), server: core => ({
+    routes: { delta: async (req, res, me, b) => {
+      if (b.op === "ask") { const a = await core.query("gamma.count", { k: 1 }, me); a.list.push(9); const again = await core.query("gamma.count", {}, me); await core.mutate(core.path("a"), () => ({ n: 0 }), d => { d.n = again.n; }); return core.send(res, 200, { a, again }); }
+      if (b.op === "sneak") { await core.query("gamma.sneak", {}, me); return core.send(res, 200, {}); }
+      if (b.op === "stray") { await core.query("gamma.nothing", {}, me); return core.send(res, 200, {}); }
+    } }
+  }) },
+  { contract: C("eps"), server: core => ({ routes: { eps: async (req, res, me) => { await core.query("gamma.count", {}, me); return core.send(res, 200, {}); } } }) }
+], base);
+const r1 = {};
+await R2.routes.delta.fn({ method: "POST" }, r1, me, { op: "ask" });
+ok("a module asks a declared query and is answered, with who asked", r1.o.a.n === 3 && r1.o.a.asked === "delta" && r1.o.a.who === "Eliya" && r1.o.a.args.k === 1, r1.o);
+ok("the answer is a copy: changing it changes nothing of the answering module", r1.o.again.list.length === 2 && mem["studio/gamma/g.json"].list.length === 2, r1.o.again);
+ok("after a query, the asking module saves its own records as usual", mem["studio/delta/a.json"] && mem["studio/delta/a.json"].n === 3, mem["studio/delta/a.json"]);
+await R2.routes.delta.fn({ method: "POST" }, {}, me, { op: "sneak" });
+ok("a query cannot save, raise a notice or raise an event", /read-only/.test(sneak.save) && /read-only/.test(sneak.notify) && /read-only/.test(sneak.emit) && mem["studio/gamma/g.json"].n === 3, sneak);
+let e3 = null; try { await R2.routes.delta.fn({ method: "POST" }, {}, me, { op: "stray" }); } catch (e) { e3 = e; }
+ok("asking a query left out of the contract is refused", e3 && e3.http === 500 && /without declaring/.test(e3.message), e3 && e3.message);
+let e4 = null; try { await R2.routes.eps.fn({ method: "POST" }, {}, me, {}); } catch (e) { e4 = e; }
+ok("a module that declares no queries cannot ask one", e4 && /without declaring/.test(e4.message), e4 && e4.message);
+const F2 = R2.list().find(x => x.id === "delta");
+ok("the public face carries the queries asked and answered", F2.queries.uses.includes("gamma.count") && R2.list()[0].queries.provides.length === 2 && R2.provided["gamma.count"] === "gamma", F2.queries);

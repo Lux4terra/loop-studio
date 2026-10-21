@@ -1,0 +1,40 @@
+/* Loop Studio · module today · built from modules/today/screen.css */
+/* Today · the module's own styles, loaded with its screen. Every colour, radius and easing comes from tokens.css. */
+.tday { margin-top: -2px; }
+.bcard { display: block; width: 100%; text-align: left; margin-bottom: 12px; }
+.bcard .bh { display: flex; align-items: center; gap: 10px; }
+.bcard .bh b { font-weight: var(--fw-strong); }
+.bcard .bh .sp { flex: 1; }
+.bcard .bsub { margin: 6px 0 4px; }
+.bcard .bl { margin: 8px 0 10px; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
+.bcard .bl li { line-height: var(--lh); }
+.bcard .own { font-weight: var(--fw-medium); }
+.focus { display: block; width: 100%; text-align: left; margin-bottom: 12px; }
+.focus .fh { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: var(--fs-xs); font-weight: var(--fw-medium); letter-spacing: var(--track-caps); text-transform: uppercase; margin-bottom: 10px; }
+.focus .ft { font: var(--fw-strong) var(--fs-l)/var(--lh-tight) var(--font-display); letter-spacing: var(--track-display); margin-bottom: 6px; overflow-wrap: anywhere; }
+.focus .frow { display: flex; gap: 8px; }
+.focus .frow .in { flex: 1; min-width: 0; }
+.focus .frow .btn { height: 48px; }
+button.focus:active { background: var(--fill); }
+.tmr { margin-bottom: 4px; }
+.tmr .tmh { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.tmr .tmh .sp { flex: 1; }
+.tmr .mseg { display: flex; background: var(--fill); border-radius: var(--r-s); padding: 2px; margin-bottom: 12px; }
+.tmr .mseg button { flex: 1; height: 36px; border-radius: calc(var(--r-s) - 2px); font-size: var(--fs-s); color: var(--text-2); }
+.tmr .mseg button.on { background: var(--surface); color: var(--text); font-weight: var(--fw-medium); box-shadow: var(--shadow-1); }
+.tmr .tml { font: var(--fw-strong) var(--fs-2xl)/1 var(--font-display); letter-spacing: var(--track-display); text-align: center; margin: 4px 0 12px; }
+.tmr .tmb { height: 6px; border-radius: var(--r-pill); background: var(--fill); overflow: hidden; margin-bottom: 10px; }
+.tmr .tmb i { display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill); transition: width var(--dur-3) var(--ease); }
+.tmr.on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 40%, transparent); }
+.tmr p { margin: 0 0 12px; }
+.qrow { gap: 4px; padding-left: 4px; padding-right: 8px; background: var(--surface); touch-action: pan-y; }
+.qrow.shift { transition: transform var(--dur-1) var(--ease); }
+.qrow.drag { z-index: 2; box-shadow: var(--shadow-1); border-radius: var(--r-s); opacity: .96; }
+.qrow .grip { width: 36px; height: 44px; display: grid; place-items: center; color: var(--text-3); flex: none; touch-action: none; cursor: grab; }
+.qrow .qm { flex: 1; min-width: 0; text-align: left; padding: 4px 0; }
+.qrow .qm .t { overflow-wrap: anywhere; }
+.qrow .nudge { display: flex; flex: none; }
+.qrow .nudge button, .qrow .qdone { width: 36px; height: 40px; display: grid; place-items: center; color: var(--text-2); border-radius: var(--r-s); flex: none; }
+.qrow .nudge button:disabled { opacity: .3; }
+.qrow .qdone { color: var(--ok); }
+.qrow button:active { background: var(--fill); }

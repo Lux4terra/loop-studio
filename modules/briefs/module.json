@@ -1,23 +1,47 @@
 {
   "id": "briefs",
   "name": "Briefs",
-  "version": 1,
-  "status": "slot",
+  "version": 2,
+  "status": "live",
   "order": 2,
   "dock": true,
   "icon": "brief",
   "hue": 212,
-  "summary": "Idea to brief: the problem, the user, the proof of done, the limits and the PRD.",
-  "records": ["studio/briefs/briefs.json"],
-  "routes": ["briefs"],
-  "permissions": { "briefs.write": "Write and edit briefs", "briefs.send": "Send a brief to build" },
-  "actions": [
-    { "id": "brief.save", "level": "do", "what": "Save a brief and its notes" },
-    { "id": "prd.draft", "level": "prepare", "what": "Draft the PRD from your notes" },
-    { "id": "brief.build", "level": "raise", "what": "Send a brief to build" }
+  "summary": "Idea to brief: the problem, the user, the proof of done, the limits and the PRD, sent to build as a session pack.",
+  "records": [
+    "studio/briefs/briefs.json",
+    "studio/briefs/packs.json"
   ],
-  "events": { "emits": [], "listens": [] },
-  "window": { "zero": "No briefs yet", "one": "brief waiting", "many": "briefs waiting", "line": "Ideas become briefs here, each with its proof of done." },
+  "routes": [
+    "briefs"
+  ],
+  "permissions": {
+    "briefs.write": "Write and edit briefs",
+    "briefs.send": "Send a brief to build"
+  },
+  "actions": [
+    { "id": "brief.save", "level": "do", "what": "Save a brief, or fill its fields from your notes" },
+    { "id": "brief.ready", "level": "do", "what": "Mark a brief ready once its gate passes" },
+    { "id": "brief.aside", "level": "do", "what": "Set a brief aside, or mark it built" },
+    { "id": "prd.draft", "level": "prepare", "what": "Draft the PRD from your notes, for you to accept, edit or discard" },
+    { "id": "pack.export", "level": "do", "what": "Export a ready brief as a session pack" },
+    { "id": "models.choose", "level": "do", "what": "Choose the free models and the names kept out of drafts" },
+    { "id": "brief.send", "level": "raise", "what": "Send a brief to build" }
+  ],
+  "events": {
+    "emits": ["brief.sent"],
+    "listens": []
+  },
+  "queries": {
+    "provides": ["briefs.waiting"],
+    "uses": ["library.items"]
+  },
+  "window": {
+    "zero": "No briefs yet",
+    "one": "brief waiting",
+    "many": "briefs waiting",
+    "line": "Ideas become briefs here, each with its proof of done."
+  },
   "i18n": ["en"],
   "tests": "test.py"
 }

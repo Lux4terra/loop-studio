@@ -22,7 +22,7 @@ words = lambda x: x[:1].isupper() or " " in x  # a sentence or a label, not a co
 
 def from_js(s):
     out = set()
-    for arg in calls(s, ["t", "T", "ctx.t", "ctx.T"]):
+    for arg in calls(s, ["t", "T", "ctx.t", "ctx.T", "ctx.f", "ctx.F"]):
         whole = re.fullmatch(r'\s*' + STR + r'\s*', arg)  # a call holding one string is always words, whatever its case
         out |= {whole.group(1)} if whole else {x for x in re.findall(STR, arg) if words(x)}
     out |= {x for x in re.findall(r'\["[\w-]*",\s*' + STR + r'\]', s) if words(x) or x[:1].isdigit()}  # labels in seg([...]) choices
@@ -30,7 +30,7 @@ def from_js(s):
         m = re.search(r'const ' + name + r' = \[(.*?)\];', s)
         if m: out |= set(re.findall(STR, m.group(1)))
     for m in re.finditer(r'const \w+_L = \{(.*?)\};', s): out |= set(re.findall(r':\s*' + STR, m.group(1)))
-    for arg in calls(s, ["plural"]): out |= {x for x in re.findall(STR, arg) if words(x)}
+    for arg in calls(s, ["plural", "ctx.plural"]): out |= {x for x in re.findall(STR, arg) if words(x)}
     for m in re.finditer(r'\b(?:name|lede|line|title):\s*' + STR, s): out.add(m.group(1))
     m = re.search(r'const greet = .*', s)
     if m: out |= set(re.findall(STR, m.group(0)))

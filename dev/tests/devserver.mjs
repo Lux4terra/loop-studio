@@ -1,6 +1,8 @@
 // Loop Studio · a local stand-in for Vercel and GitHub, to test Studio end to end (KERUB OS's dev server, stripped).
-// Serves public/ as Vercel does, runs api/studio.js, and answers GitHub's contents API from memory.
-// /__mock (GET) shows the files and commits; (POST) {reset}, {put:{path,data}}, {env:{...}}, {empty:true} change it.
+// Serves public/ as Vercel does, runs api/studio.js, answers GitHub's contents API from memory, and stands in for the
+// free models (Gemini and Groq), recording every prompt so tests can say what left and what did not.
+// /__mock (GET) shows the files, commits and model calls; (POST) {reset}, {put:{path,data}}, {env:{...}}, {empty:true},
+// {aiDown:{gemini,groq}}, {aiText:"..."}, {aiCut:true} change it. Model keys start unset, as in a fresh Vercel project.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -13,7 +15,21 @@ const PORT = +process.argv[3] || 8791;
 Object.assign(process.env, { LOOP_DATA_REPO: "Lux4terra/loop-data", LOOP_GITHUB_TOKEN: "test-data-token", STUDIO_KEY: "test-studio-key-0123456789" });
 
 const files = {}, blobs = {}, commits = [];
-const mock = { ghCalls: 0, gh304: 0, empty: false };
+const mock = { ghCalls: 0, gh304: 0, empty: false, ai: [], aiDown: { gemini: false, groq: false }, aiText: null, aiCut: false };
+const AI_KEYS = { GEMINI_API_KEY: "test-gemini-key", GROQ_API_KEY: "test-groq-key" }; // test values only
+const PRD = "Summary\nA module that tracks every build side by side.\n\nUsers\n- The studio lead, on a phone.\n\nGoals\n- See where each build stands.\n\nScope\n- Builds read from GitHub.\n\nOut of scope\n- Merging.\n\nRequirements\n- Show the branch, the last commit and the suite status.\n\nRisks and open questions\n- Rate limits on reading commits.";
+function model(provider, url, init) {
+  const b = JSON.parse(init.body);
+  const rec = provider === "gemini"
+    ? { provider, model: decodeURIComponent(url.split("/models/")[1].split(":")[0]), sys: b.systemInstruction.parts[0].text, prompt: b.contents[0].parts[0].text, key: init.headers["x-goog-api-key"], thinking: b.generationConfig.thinkingConfig }
+    : { provider, model: b.model, sys: b.messages[0].content, prompt: b.messages[1].content, key: String(init.headers.Authorization || "").replace("Bearer ", "") };
+  mock.ai.push(rec);
+  if (mock.aiDown[provider]) return J(503, { error: { message: "unavailable" } });
+  const text = mock.aiText == null ? PRD : mock.aiText;
+  return provider === "gemini"
+    ? J(200, { candidates: [{ content: { parts: [{ text }] }, finishReason: mock.aiCut ? "MAX_TOKENS" : "STOP" }] })
+    : J(200, { choices: [{ message: { content: text }, finish_reason: mock.aiCut ? "length" : "stop" }] });
+}
 const b64 = t => Buffer.from(t).toString("base64").replace(/(.{60})/g, "$1\n");
 const J = (status, obj, h = {}) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...h } });
 function github(url, init) {
@@ -53,6 +69,8 @@ const outside = [];
 globalThis.fetch = async (url, init = {}) => {
   const s = String(url);
   if (s.startsWith("https://api.github.com")) return github(s, init);
+  if (s.startsWith("https://generativelanguage.googleapis.com/")) return model("gemini", s, init);
+  if (s.startsWith("https://api.groq.com/")) return model("groq", s, init);
   outside.push(s); // anything else the server reaches for is recorded, so tests can say nothing leaves
   return realFetch(url, init);
 };
@@ -69,7 +87,9 @@ http.createServer(async (req, res) => {
   if (u.pathname === "/__mock") {
     if (req.method === "POST") {
       let b = ""; for await (const c of req) b += c; const o = JSON.parse(b || "{}");
-      if (o.reset) { for (const k in files) delete files[k]; for (const k in blobs) delete blobs[k]; commits.length = 0; outside.length = 0; mock.empty = false; mock.ghCalls = 0; mock.gh304 = 0; delete o.reset; }
+      if (o.reset) { for (const k in files) delete files[k]; for (const k in blobs) delete blobs[k]; commits.length = 0; outside.length = 0; mock.empty = false; mock.ghCalls = 0; mock.gh304 = 0;
+        mock.ai = []; mock.aiDown = { gemini: false, groq: false }; mock.aiText = null; mock.aiCut = false; for (const k in AI_KEYS) delete process.env[k]; delete o.reset; }
+      if (o.aiKeys) { Object.assign(process.env, AI_KEYS); delete o.aiKeys; }
       if (o.put) { const text = JSON.stringify(o.put.data), sha = crypto.createHash("sha1").update(text).digest("hex"); blobs[sha] = text; files[o.put.path] = { text, sha }; delete o.put; }
       if (o.env) { Object.assign(process.env, o.env); for (const [k, v] of Object.entries(o.env)) if (v === null) delete process.env[k]; delete o.env; }
       Object.assign(mock, o);

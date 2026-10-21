@@ -1,7 +1,7 @@
 // Loop Studio: the newest copy of the app opens whenever the network answers within a moment; otherwise the copy kept
 // on the device opens at once. Data calls are never cached here.
-const CACHE = "loop-studio-f79b3ff32b";
-const SHELL = ["./", "tokens.css?v=f79b3ff32b", "shell.css?v=f79b3ff32b", "shell.js?v=f79b3ff32b", "paint.js?v=f79b3ff32b", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
+const CACHE = "loop-studio-29d8d07329";
+const SHELL = ["./", "tokens.css?v=29d8d07329", "shell.css?v=29d8d07329", "shell.js?v=29d8d07329", "paint.js?v=29d8d07329", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {

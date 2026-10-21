@@ -153,7 +153,7 @@ async def main():
         allow = {"Loop Studio", "Eliya", "Eliya N.", V, "English", "Test"}
         js = """([allow, skip]) => { const out = [], w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
           while (w.nextNode()) { const n = w.currentNode, s = n.textContent.trim(), p = n.parentElement;
-            if (!s || !/[A-Za-z]{2,}/.test(s) || s.includes('‹') || !p || p.closest('.mono, #ver, #av, svg, script, style, [hidden], #toast, ' + skip) || allow.includes(s.replace(/^[,\\s]+/, ''))) continue;
+            if (!s || !/[A-Za-z]{2,}/.test(s) || s.includes('‹') || !p || p.closest('.mono, .own, #ver, #av, svg, script, style, [hidden], #toast, ' + skip) || allow.includes(s.replace(/^[,\\s]+/, ''))) continue;
             if (p.closest('#sheet') && !document.getElementById('sheet').classList.contains('on')) continue;
             out.push(s.slice(0, 60)); } return out; }"""
         left = []

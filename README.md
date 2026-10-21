@@ -24,7 +24,7 @@ Started as a stripped copy of the KERUB OS shell (sign-in, Home, windows, the no
 ```
 python3 dev/build.py                 # checks every contract, writes public/app and the registry
 sh dev/tests/setup.sh                # once: Playwright with Chromium, and Pillow
-sh dev/tests/run_all.sh              # every suite, about three minutes
+sh dev/tests/run_all.sh              # every suite, about four minutes
 sh dev/tests/run_all.sh c_ui         # one suite
 ```
 
@@ -39,5 +39,7 @@ Project root is this repo; no build command (the build output is committed in `p
 | `LOOP_GITHUB_TOKEN` | A fine-grained GitHub token with Contents read and write on `Lux4terra/loop-data` only |
 | `LOOP_DATA_REPO` | `Lux4terra/loop-data` |
 | `STUDIO_KEY` | A long random phrase (16 characters or more). It signs every session and sets up or resets the passcode; rotating it signs every device out |
+| `GEMINI_API_KEY` | A free-tier Gemini key, for drafting PRDs in Briefs. Optional; without it Briefs names the key it needs |
+| `GROQ_API_KEY` | A free-tier Groq key, the fallback when Gemini is busy. Optional |
 
 Open `/app/`, set Studio up with the studio key, choose a passcode, then add Studio to the Home Screen.

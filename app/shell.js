@@ -11,7 +11,7 @@ const store = () => { try { return JSON.parse(localStorage.getItem(ST) || "{}");
 const keep = p => { try { localStorage.setItem(ST, JSON.stringify({ ...store(), ...p })); } catch (_) {} };
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const STANDALONE = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
-const G = { tok: store().tok || null, d: null, view: "", rec: {}, offline: false, lang: store().lang || "en", ping: null, nseg: "open", ncX: {}, bip: null, loginMode: null };
+const G = { tok: store().tok || null, d: null, view: "", sub: "", rec: {}, offline: false, lang: store().lang || "en", ping: null, nseg: "open", ncX: {}, bip: null, loginMode: null };
 
 /* ========== language: English keys, a small file per language, merged by the build ========== */
 const LANGS = /*LANGS*/[["en", "English"]]/*/LANGS*/;
@@ -43,7 +43,13 @@ const P = {
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.4"/>', clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   inbox: '<path d="M4 13.5 6.2 5.6A1.5 1.5 0 0 1 7.6 4.5h8.8a1.5 1.5 0 0 1 1.4 1.1L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><path d="M4 13.5h4.5a3.5 3.5 0 0 0 7 0H20"/>',
   layers: '<path d="M12 4 3.5 8.5 12 13l8.5-4.5z"/><path d="M3.5 12.5 12 17l8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>',
-  spark: '<path d="M12 3.5l1.6 5.3 5.4 1.7-5.4 1.7L12 17.5l-1.6-5.3L5 10.5l5.4-1.7z"/>', dot: '<circle cx="12" cy="12" r="2"/>'
+  spark: '<path d="M12 3.5l1.6 5.3 5.4 1.7-5.4 1.7L12 17.5l-1.6-5.3L5 10.5l5.4-1.7z"/>', dot: '<circle cx="12" cy="12" r="2"/>',
+  grip: '<path stroke-width="3" d="M9 6.5h.01M15 6.5h.01M9 12h.01M15 12h.01M9 17.5h.01M15 17.5h.01"/>', up: '<path d="M6 14.5l6-6 6 6"/>', down: '<path d="M6 9.5l6 6 6-6"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>', stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/>', target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path stroke-width="3" d="M12 12h.01"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>',
+  share: '<path d="M12 3.8v11M8 7.5l4-4 4 4M7 11H6a1.5 1.5 0 0 0-1.5 1.5v6A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 18 11h-1"/>',
+  send: '<path d="M4 11.5 20 4l-7.5 16-2.2-6.6zM10.3 13.4 20 4"/>', edit: '<path d="M5 19l1-4L16 5a2.1 2.1 0 0 1 3 3L9 18zM14 7l3 3"/>',
+  aside: '<rect x="4" y="5" width="16" height="4" rx="1"/><path d="M5.5 9v9A1.5 1.5 0 0 0 7 19.5h10a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4"/>'
 };
 const ic = (n, c = "") => `<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || P.dot}</svg>`;
 const tile = (a, cls = "") => `<span class="ti ${cls}" style="--h:${+a.hue || 0}">${ic(a.icon)}</span>`;
@@ -60,15 +66,23 @@ const greet = () => { const h = new Date().getHours(); return h < 5 ? "Good even
 const first = n => String(n || "").trim().split(/\s+/)[0] || "";
 const ini = n => String(n || "?").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase();
 const plural = (n, one, many, zero) => n === 0 && zero ? t(zero) : t(n === 1 ? one : many);
+const pad = n => String(n).padStart(2, "0");
+const localDay = (d = new Date()) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+// templated words: f gives text, F gives HTML whose values are already HTML (numbers, or own(...) for a person's words)
+const f = (s, v) => t(s).replace(/\{(\w+)\}/g, (m, k) => v && v[k] != null ? String(v[k]) : m);
+const F = (s, v) => esc(t(s)).replace(/\{(\w+)\}/g, (m, k) => v && v[k] != null ? String(v[k]) : m);
+const own = s => `<span class="own">${esc(s)}</span>`;
 
 /* ========== network ========== */
 async function api(a, o = {}) {
   const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), o.ms || 20000);
   try {
-    const r = await fetch("/api/studio?a=" + a + (o.q || ""), { method: o.body ? "POST" : "GET", cache: "no-store", signal: ctl.signal,
+    const r = await fetch("/api/studio?a=" + a + (o.q || "") + "&day=" + localDay(), { method: o.body ? "POST" : "GET", cache: "no-store", signal: ctl.signal,
       headers: { ...(G.tok ? { Authorization: "Bearer " + G.tok } : {}), ...(o.body ? { "Content-Type": "application/json" } : {}) }, body: o.body ? JSON.stringify(o.body) : undefined });
-    let j = {}; try { j = await r.json(); } catch (_) {}
+    let j = null; try { j = await r.json(); } catch (_) {}
     if (r.status === 401 && G.tok && !o.soft) signOut(t("Please sign in again."));
+    // an answer cut short reads as no answer: a page never draws from half a record
+    if (!j || typeof j !== "object") return { ok: false, status: 0, j: { error: t("No connection. Try again when you are back online.") } };
     return { ok: r.ok, status: r.status, j };
   } catch (_) { return { ok: false, status: 0, j: { error: t("No connection. Try again when you are back online.") } }; }
   finally { clearTimeout(tm); }
@@ -83,8 +97,9 @@ async function load(quiet) {
     // a newer Studio on the server: take it once
     if (r.j.v && r.j.v !== V && V.indexOf("__") < 0 && !sessionStorage.getItem("ls_reload_" + r.j.v)) { sessionStorage.setItem("ls_reload_" + r.j.v, "1"); location.reload(); return false; }
     G.d = r.j; G.offline = false; cacheSave();
-    const typing = quiet && document.activeElement && $("main").contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-    if (!typing) render();
+    const typing = quiet && document.activeElement && ($("main").contains(document.activeElement) || $("shB").contains(document.activeElement)) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    if (quiet && !typing && !sheetOn && MODS[G.view]) delete G.rec[G.view];
+    if (!typing && !sheetOn) render(); else chrome();
     return true;
   }
   if (r.status === 0) { G.offline = true; if (!G.d) G.d = cacheLoad(); if (G.d) render(); else toast(errOf(r)); }
@@ -93,7 +108,7 @@ async function load(quiet) {
 }
 function signOut(msg) {
   G.tok = null; G.d = null; G.rec = {}; G.view = ""; keep({ tok: null });
-  try { localStorage.removeItem(cacheKey); } catch (_) {}
+  try { localStorage.removeItem(cacheKey); Object.keys(localStorage).filter(k => k.startsWith(ST + "_m_")).forEach(k => localStorage.removeItem(k)); } catch (_) {}
   closeSheet("nav"); history.replaceState({ v: "", d: 0 }, "", location.pathname); render(); if (msg) toast(msg);
 }
 
@@ -108,39 +123,49 @@ const disp = () => ({ fs: "m", tf: "24", ...((G.d && G.d.me.display) || {}) });
 
 /* ========== ui helpers ========== */
 let toastT;
-function toast(m, ms) { const e = $("toast"); e.textContent = m; e.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove("on"), ms || 3200); }
+function toast(m, ms, act) {
+  const e = $("toast"); e.innerHTML = esc(m) + (act ? `<button class="tact" type="button">${esc(act.label)}</button>` : ""); e.classList.toggle("act", !!act); e.classList.add("on");
+  if (act) e.lastChild.onclick = () => { e.classList.remove("on"); act.fn(); };
+  clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove("on"), ms || 3200);
+}
 function busy(b, on) { if (!b) return; if (on) { b.dataset.t = b.innerHTML; b.disabled = true; b.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>'; } else { b.disabled = false; b.innerHTML = b.dataset.t || ""; } }
 const empty = (i, b, s) => `<div class="empty">${ic(i)}<b>${esc(b)}</b>${s ? `<div class="small">${esc(s)}</div>` : ""}</div>`;
 const sw = (on, act, attrs = "") => `<button type="button" class="sw ${on ? "on" : ""}" data-act="${act}" role="switch" aria-checked="${!!on}" ${attrs}></button>`;
 const seg = (act, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" class="${cur === v ? "on" : ""}" aria-pressed="${cur === v}">${T(l)}</button>`).join("")}</div>`;
 function head(title, o = {}) {
   const back = o.back !== false && !!G.view;
-  return `<h1 class="lt" id="lt">${back ? `<button class="back" data-act="back" aria-label="${T("Back")}">${ic("back")}</button>` : ""}<span>${esc(title)}</span><span class="sp"></span>${o.right || ""}</h1>${o.lede ? `<p class="lede">${esc(o.lede)}</p>` : ""}`;
+  return `<h1 class="lt" id="lt">${back ? `<button class="back" data-act="back" aria-label="${T("Back")}">${ic("back")}</button>` : ""}<span${o.own ? ' class="own"' : ""}>${esc(title)}</span><span class="sp"></span>${o.right || ""}</h1>${o.lede ? `<p class="lede">${esc(o.lede)}</p>` : ""}`;
 }
 const LV_L = { do: "Do", prepare: "Prepare", raise: "Raise" };
+const lv = l => `<span class="lv lv-${esc(l)}">${T(LV_L[l] || l)}</span>`;
+/* a module's contract, at the foot of its screen: what it keeps, answers, does, tells and asks */
+function contractCard(ctx) {
+  const C = ctx.contract, E = C.events || {}, Q = C.queries || {}, kv = (k, v) => `<dl class="kv"><dt>${esc(k)}</dt><dd>${v}</dd></dl>`;
+  const pairs = L2 => L2.filter(x => x[1].length).map(([w, xs]) => xs.map(x => `<div><span class="faint">${esc(w)}</span> <span class="mono">${esc(x)}</span></div>`).join("")).join("");
+  return `<div class="sec">${T("Contract")}</div><div class="card" id="contract">${kv(t("Version"), esc(C.version) + " · " + T(C.status === "slot" ? "Slot" : "Live"))}
+   ${kv(t("Records"), `<span class="mono">${C.records.map(esc).join("<br>")}</span>`)}${kv(t("Routes"), `<span class="mono">${C.routes.map(esc).join(", ")}</span>`)}
+   ${kv(t("Actions"), `<div class="acts">${C.actions.map(a => `<div>${lv(a.level)}<span>${T(a.what)}</span></div>`).join("")}</div>`)}
+   ${(E.emits || []).length + (E.listens || []).length ? kv(t("Events"), pairs([[t("Raises"), E.emits || []], [t("Hears"), E.listens || []]])) : ""}
+   ${(Q.provides || []).length + (Q.uses || []).length ? kv(t("Queries"), pairs([[t("Answers"), Q.provides || []], [t("Asks"), Q.uses || []]])) : ""}</div>`;
+}
 /* an empty module screen, the same for every slot: what it will hold, and its contract */
 function slotView(ctx, o = {}) {
   const C = ctx.contract;
   return head(t(C.name)) + `<div class="slot-hero">${tile(C, "sig")}<p>${T(C.summary)}</p></div>
-  <div class="card">${empty(o.icon || C.icon, o.title || t("Nothing here yet"), o.line || "")}${o.extra || ""}</div>
-  <div class="sec">${T("Contract")}</div>
-  <div class="card" id="contract">
-   <dl class="kv"><dt>${T("Version")}</dt><dd>${esc(C.version)} · ${T(C.status === "slot" ? "Slot" : "Live")}</dd></dl>
-   <dl class="kv"><dt>${T("Records")}</dt><dd class="mono">${C.records.map(esc).join("<br>")}</dd></dl>
-   <dl class="kv"><dt>${T("Routes")}</dt><dd class="mono">${C.routes.map(esc).join(", ")}</dd></dl>
-   <dl class="kv"><dt>${T("Actions")}</dt><dd class="acts">${C.actions.map(a => `<div><span class="lv lv-${esc(a.level)}">${T(LV_L[a.level] || a.level)}</span><span>${T(a.what)}</span></div>`).join("")}</dd></dl>
-  </div>`;
+  <div class="card">${empty(o.icon || C.icon, o.title || t("Nothing here yet"), o.line || "")}${o.extra || ""}</div>${contractCard(ctx)}`;
 }
-const UI = { esc, ic, head, empty, sw, seg, slot: slotView, tile, dm, hm, rel };
+const UI = { esc, ic, head, empty, sw, seg, slot: slotView, contract: contractCard, tile, dm, hm, rel, lv, busy };
 
 /* ========== sheets, with the browser's back ========== */
 let sheetOn = false;
-function hist(v, sheet, replace) {
-  const d = (history.state && history.state.d) || 0, st = { v, d: replace ? d : d + 1, ...(sheet ? { sheet: 1 } : {}) };
-  const url = v ? "#/" + v : location.pathname + location.search;
+function hist(v, sheet, replace, sub) {
+  sub = sub === undefined ? G.sub : sub;
+  const d = (history.state && history.state.d) || 0, st = { v, s: sub || "", d: replace ? d : d + 1, ...(sheet ? { sheet: 1 } : {}) };
+  const url = v ? "#/" + v + (sub ? "/" + sub : "") : location.pathname + location.search;
   (replace ? history.replaceState : history.pushState).call(history, st, "", url);
 }
 function openSheet(title, html, o = {}) {
+  $("toast").classList.remove("on");
   $("shT").textContent = title; $("shB").innerHTML = html; $("shB").scrollTop = 0;
   const s = $("sheet"); s.classList.toggle("ncs", !!o.top); if (o.top) void s.offsetWidth;
   if (!sheetOn) hist(G.view, true, false);
@@ -148,46 +173,60 @@ function openSheet(title, html, o = {}) {
   if (o.after) o.after($("shB"));
 }
 function sheetShut() { if (!sheetOn) return; sheetOn = false; const s = $("sheet"); s.classList.remove("on"); $("scrim").classList.remove("on"); s.setAttribute("aria-hidden", "true"); }
-// closing by hand also steps back over the sheet's place in history; "nav" leaves history to nav()
-function closeSheet(mode) { const was = sheetOn; sheetShut(); if (mode !== "nav" && was && history.state && history.state.sheet) history.back(); }
+// closing by hand also steps back over the sheet's place in history; "nav" leaves history to nav(). A navigation asked
+// for before that step lands waits for it, so it is never undone by it.
+let backing = null;
+function closeSheet(mode) { const was = sheetOn; sheetShut(); if (mode !== "nav" && was && history.state && history.state.sheet) { backing = backing || []; history.back(); } }
 
 /* ========== moving around: Home, then any app; Back returns the way you came ========== */
 function viewOK(v) { return v === "" || !!appOf(v); }
-function nav(v) {
+const subOK = s => /^[\w.-]{0,40}$/.test(s || "") ? s || "" : "";
+// a view is an app, and within a module, an optional sub-view of its own (a brief, say): #/briefs/b_1a2b
+function nav(v, sub) {
   if (!G.d) return;
+  if (backing) { backing.push([v, sub]); return; }
   if (!viewOK(v)) v = "";
+  sub = v ? subOK(sub) : "";
   const fromSheet = !!(history.state && history.state.sheet);
   closeSheet("nav");
-  if (v === G.view && !fromSheet) { scrollTo(0, 0); return; }
-  hist(v, false, fromSheet); G.view = v; render(); scrollTo(0, 0);
+  if (v === G.view && sub === G.sub && !fromSheet) { scrollTo(0, 0); return; }
+  hist(v, false, fromSheet, sub); G.view = v; G.sub = sub; render(); scrollTo(0, 0);
 }
-function back() { if (((history.state && history.state.d) || 0) > 0) history.back(); else { hist("", false, true); G.view = ""; render(); scrollTo(0, 0); } }
+function back() {
+  if (((history.state && history.state.d) || 0) > 0) return history.back();
+  const v = G.sub ? G.view : ""; hist(v, false, true, ""); G.view = v; G.sub = ""; render(); scrollTo(0, 0);
+}
 addEventListener("popstate", e => {
-  const s = e.state || { v: (location.hash.match(/^#\/([\w-]+)/) || [])[1] || "" };
+  const h = location.hash.match(/^#\/([\w-]+)(?:\/([\w.-]+))?/) || [], s = e.state || { v: h[1] || "", s: h[2] || "" };
   if (sheetOn && !s.sheet) sheetShut();
-  const v = viewOK(s.v || "") ? (s.v || "") : "";
-  if (v !== G.view) { G.view = v; render(); scrollTo(0, 0); }
+  const v = viewOK(s.v || "") ? (s.v || "") : "", sub = v ? subOK(s.s) : "";
+  if (v !== G.view || sub !== G.sub) { G.view = v; G.sub = sub; render(); scrollTo(0, 0); }
+  if (backing) { const q = backing; backing = null; q.forEach(([v2, s2]) => nav(v2, s2)); }
 });
 
 /* ========== drawing ========== */
 const VIEWS = {};
-function render() {
-  const inApp = !!(G.tok && G.d);
-  $("login").hidden = !!G.tok; $("bar").hidden = !inApp; $("main").hidden = !G.tok; $("dock").hidden = !inApp;
-  if (!G.tok) { document.body.classList.remove("home", "walldark"); renderLogin(); return; }
-  if (!G.d) { $("main").innerHTML = skeleton(); return; }
-  applyLook();
+function chrome() {
   const me = G.d.me, n = (G.d.inbox || {}).unread || 0;
   $("av").textContent = ini(me.name);
   $("bellBtn").innerHTML = ic("bell") + (n ? '<i class="dot"></i>' : ""); $("bellBtn").setAttribute("aria-label", t("Notifications") + (n ? " · " + n : ""));
   const dock = [{ id: "", name: "Home", icon: "home" }, ...mods().filter(m => m.dock)];
   $("dock").innerHTML = dock.map(a => `<button data-act="open" data-v="${esc(a.id)}" class="${G.view === a.id ? "on" : ""}" aria-label="${T(a.name)}"${G.view === a.id ? ' aria-current="page"' : ""}>${ic(a.icon)}<span>${T(a.name)}</span></button>`).join("");
+}
+function render() {
+  const inApp = !!(G.tok && G.d);
+  $("login").hidden = !!G.tok; $("bar").hidden = !inApp; $("main").hidden = !G.tok; $("dock").hidden = !inApp;
+  if (!G.tok) { document.body.classList.remove("home", "walldark"); renderLogin(); return; }
+  if (!G.d) { $("main").innerHTML = skeleton(); return; }
+  applyLook(); chrome();
   const v = G.view, A = appOf(v);
+  if (TICK && TICK.id !== v) { clearInterval(TICK.h); TICK = null; }
   document.body.classList.toggle("home", !v);
   const html = !v ? homeView() : VIEWS[v] ? VIEWS[v]() : modView(v);
   $("main").innerHTML = `<div class="fade">${G.offline ? `<div class="off">${ic("clock", "s")}${T("Offline. Showing what was last loaded.")}</div>` : ""}${html}</div>`;
   $("ct").textContent = !v ? "Loop Studio" : A ? t(A.name) : "";
   watchTitle(); if (!v) winDots();
+  const m = MODS[v]; if (m && m.after && (G.rec[v] != null || !m.load)) { try { m.after(ctx(v), G.rec[v]); } catch (e) { console.error(e); } }
 }
 let io;
 function watchTitle() {
@@ -200,6 +239,8 @@ function skeleton() { return `<div class="sk" style="height:14px;width:40%;margi
 /* ---------- Home ---------- */
 function windows() {
   const W = mods().filter(m => m.window).map(m => { const d = dataOf(m.id), w = m.window, n = +d.count || 0;
+    // a module may lead its window with the person's own words (Today's focus), its figure then below them
+    if (d.text) return { id: m.id, a: m, v: "", l: String(d.text), own: 1, s: n ? n + " " + plural(n, w.one, w.many) : t(w.line) };
     return { id: m.id, a: m, v: n ? String(n) : "", l: plural(n, w.one, w.many, w.zero), s: t(w.line) }; });
   const I = G.d.inbox || {}, u = I.unread || 0, last = (I.items || []).find(x => x.st !== "done");
   W.push({ id: "bell", a: { hue: 4, icon: "bell", name: "Notifications" }, v: u ? String(u) : "", l: plural(u, "new notification", "new notifications", "All quiet"), s: last ? t(last.t) : t("Anything that needs you appears here first.") });
@@ -208,7 +249,7 @@ function windows() {
 function homeView() {
   const me = G.d.me, st = look().icons, W = windows();
   return `<div class="st-${st}"><div class="hello"><div class="eyebrow">${esc(today())}</div><h1 class="greet" id="lt">${T(greet())}<span>, ${esc(first(me.name))}</span></h1></div>
-  <div class="wins" id="wins">${W.map(w => `<button class="win${w.v ? "" : " zero"}" ${w.id === "bell" ? 'data-act="bell"' : `data-act="open" data-v="${esc(w.id)}"`} aria-label="${T(w.a.name)}"><div class="wh">${tile(w.a)}<span>${T(w.a.name)}</span></div>${w.v ? `<div class="wv num">${esc(w.v)}</div>` : ""}<div class="wl">${esc(w.l)}</div><div class="ws">${esc(w.s)}</div></button>`).join("")}</div>
+  <div class="wins" id="wins">${W.map(w => `<button class="win${w.v ? "" : " zero"}" ${w.id === "bell" ? 'data-act="bell"' : `data-act="open" data-v="${esc(w.id)}"`} aria-label="${T(w.a.name)}"><div class="wh">${tile(w.a)}<span>${T(w.a.name)}</span></div>${w.v ? `<div class="wv num">${esc(w.v)}</div>` : ""}<div class="wl${w.own ? " own" : ""}">${esc(w.l)}</div><div class="ws">${esc(w.s)}</div></button>`).join("")}</div>
   ${W.length > 1 ? `<div class="wdots" id="wdots">${W.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}
   <div class="sec home-sec">${T("Apps")}</div>
   <div class="apps" id="apps">${apps().map(a => { const b = +dataOf(a.id).badge || 0; return `<button class="app" data-act="open" data-v="${esc(a.id)}" data-app="${esc(a.id)}">${tile(a)}<span class="al">${T(a.name)}</span>${b ? `<span class="bd">${b > 99 ? "99+" : b}</span>` : ""}</button>`; }).join("")}</div></div>`;
@@ -232,6 +273,7 @@ function loadScreen(id) {
   if (MODS[id]) return Promise.resolve(true);
   if (loading[id]) return loading[id];
   const m = mods().find(x => x.id === id);
+  if (m && m.css && !$("css-" + id)) { const l = document.createElement("link"); l.rel = "stylesheet"; l.id = "css-" + id; l.href = "m/" + id + ".css?v=" + V; document.head.appendChild(l); }
   return loading[id] = new Promise(res => {
     const s = document.createElement("script"); s.src = "m/" + id + ".js?v=" + V; s.async = false;
     Studio._loading = id;
@@ -241,10 +283,41 @@ function loadScreen(id) {
     document.head.appendChild(s);
   });
 }
+/* what a module's screen may use: its own route, its record, the shell's helpers, and nothing of another module */
+let TICK = null, figT;
+const devKey = id => ST + "_m_" + id;
+const devAll = id => { try { return JSON.parse(localStorage.getItem(devKey(id)) || "{}"); } catch (_) { return {}; } };
+function devKeep(id, k, v) { const o = devAll(id); if (v == null) delete o[k]; else o[k] = v; try { localStorage.setItem(devKey(id), JSON.stringify(o)); } catch (_) {} }
+async function copy(x) {
+  try {
+    if (typeof x !== "string" && window.ClipboardItem) { await navigator.clipboard.write([new ClipboardItem({ "text/plain": Promise.resolve(x).then(s => new Blob([s], { type: "text/plain" })) })]); return true; }
+    await navigator.clipboard.writeText(await x); return true;
+  } catch (_) { try { await navigator.clipboard.writeText(await x); return true; } catch (__) { return false; } }
+}
+async function share(o) {
+  if (navigator.share) { try { await navigator.share({ title: o.title, text: o.text }); return true; } catch (e) { if (e && e.name === "AbortError") return false; } }
+  return copy(o.text);
+}
+// after a module saves, Home's figures follow quietly
+function figuresSoon() {
+  clearTimeout(figT); figT = setTimeout(async () => {
+    const r = await api("boot", { soft: true }); if (!r.ok || !G.d) return;
+    G.d = { ...r.j, me: G.d.me }; cacheSave(); if (!G.view) render(); else chrome();
+  }, 1200);
+}
 function ctx(id) {
-  const C = mods().find(m => m.id === id);
-  return { id, contract: C, ui: UI, t, T, esc, ic, toast, data: dataOf(id),
-    api: body => api(C.routes[0], body ? { body } : {}),
+  const C = mods().find(m => m.id === id), I = (G.d && G.d.inbox) || {};
+  return { id, contract: C, ui: UI, t, T, f, F, own, plural, esc, ic, toast, data: dataOf(id), lang: G.lang, day: localDay(),
+    sub: G.view === id ? G.sub : "", get rec() { return G.rec[id]; }, needs: (I.items || []).filter(x => x.st === "open").length,
+    api: (body, q) => api(C.routes[0], { ...(body ? { body } : {}), q: q || "" }).then(r => { if (r.ok && body) figuresSoon(); return r; }),
+    set: r => { G.rec[id] = r; if (G.view === id) render(); },
+    go: sub => nav(id, sub), open: (app, sub) => nav(app, sub),
+    sheet: (title, html, o) => openSheet(title, html, o), close: () => closeSheet(),
+    undo: (msg, fn) => toast(msg, 6000, { label: t("Undo"), fn }),
+    keep: (k, v) => devKeep(id, k, v), kept: k => devAll(id)[k],
+    every: (ms, fn) => { if (TICK) clearInterval(TICK.h); TICK = { id, h: setInterval(() => { if (G.view !== id) { clearInterval(TICK.h); TICK = null; } else try { fn(); } catch (e) { console.error(e); } }, ms) }; },
+    q: sel => $("main").querySelector(sel) || $("shB").querySelector(sel), qa: sel => [...$("main").querySelectorAll(sel)],
+    copy, share, hm, dm,
     rerender: () => { if (G.view === id) render(); } };
 }
 function modView(id) {
@@ -261,7 +334,7 @@ function ncBody() {
   const by = {}; for (const x of list) (by[x.mod] = by[x.mod] || []).push(x);
   const stacks = Object.entries(by).sort((a, b) => b[1][0].at.localeCompare(a[1][0].at));
   const nameOf = k => (appOf(k) || { name: "Studio" }).name, appIc = k => appOf(k) || { hue: 222, icon: "spark" };
-  const card = x => `<div class="ncard${x.at > seen && x.st !== "done" ? " new" : ""}" data-n="${esc(x.id)}">${x.go ? `<button class="t" data-act="ncGo" data-v="${esc(x.go.app)}" style="width:100%;text-align:left">` : '<div class="t">'}<span>${T(x.t)}</span><time>${esc(rel(x.at))}</time>${x.go ? "</button>" : "</div>"}${x.x ? `<div class="s">${T(x.x)}</div>` : ""}${x.st === "open" ? `<span class="lv lv-raise ncm">${T("Needs you")}</span><button class="link ncr small" data-act="ncDone" data-v="${esc(x.id)}">${T("Mark resolved")}</button>` : ""}</div>`;
+  const card = x => `<div class="ncard${x.at > seen && x.st !== "done" ? " new" : ""}" data-n="${esc(x.id)}">${x.go ? `<button class="t" data-act="ncGo" data-v="${esc(x.go.app)}" style="width:100%;text-align:left">` : '<div class="t">'}<span>${T(x.t)}</span><time>${esc(rel(x.at))}</time>${x.go ? "</button>" : "</div>"}${x.o ? `<div class="s own">${esc(x.o)}</div>` : ""}${x.x ? `<div class="s">${T(x.x)}</div>` : ""}${x.st === "open" ? `<span class="lv lv-raise ncm">${T("Needs you")}</span><button class="link ncr small" data-act="ncDone" data-v="${esc(x.id)}">${T("Mark resolved")}</button>` : ""}</div>`;
   return `<div class="ncdate">${esc(today())}</div>${seg("nSeg", [["open", "Needs you"], ["info", "Updates"], ["done", "Resolved"]].map(([k, l]) => [k, t(l) + (grp[k].length ? " · " + grp[k].length : "")]), sg)}
   ${stacks.length ? stacks.map(([k, L2]) => { const open = G.ncX[k] || L2.length < 3; return `<div class="ncg" data-mod="${esc(k)}"><div class="ncgh">${tile(appIc(k), "sig")}<b>${T(nameOf(k))}</b>${L2.length > 2 ? `<button class="link small" data-act="ncX" data-v="${esc(k)}">${T(open ? "Show less" : "Show all")} · ${L2.length}</button>` : ""}</div>${(open ? L2 : L2.slice(0, 1)).map(card).join("")}</div>`; }).join("")
   : empty("bell", t(sg === "open" ? "Nothing needs you" : sg === "done" ? "Nothing resolved yet" : "All quiet"), t(sg === "open" ? "Anything that needs you appears here first." : "Updates from every app appear here."))}`;
@@ -449,14 +522,14 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 /* ========== start ========== */
 (async function start() {
   $("shX").innerHTML = ic("close");
-  const want = (location.hash.match(/^#\/([\w-]+)/) || [])[1] || "";
+  const hh = location.hash.match(/^#\/([\w-]+)(?:\/([\w.-]+))?/) || [], want = hh[1] || "", wantSub = hh[2] || "";
   history.replaceState({ v: "", d: 0 }, "", location.pathname + location.search);
   await langLoad(G.lang);
   if (!G.tok) { render(); }
   else {
     G.d = cacheLoad(); if (G.d) render(); else render();
     const ok = await load();
-    if (ok && want && viewOK(want)) nav(want);
+    if (ok && want && viewOK(want)) nav(want, wantSub);
   }
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

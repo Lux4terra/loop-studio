@@ -2,7 +2,8 @@
 # Loop Studio · the build. Reads the shell (app/) and the module folders (modules/), checks every module's contract,
 # and writes what Vercel serves (public/app/) and the server's registry (api/_core/registry.gen.js):
 #   - one version, from the content itself, stamped into the page, the service worker and the registry;
-#   - each module's screen as its own file (public/app/m/<id>.js), loaded only when its app opens;
+#   - each module's screen as its own file (public/app/m/<id>.js, and m/<id>.css when it has styles), loaded only when
+#     its app opens;
 #   - translations merged per language (public/app/i18n/<lang>.json), and the language list written into the shell;
 #   - colours for the manifest and the page's theme read from tokens.css, so tokens stay the one source.
 # Usage: python3 dev/build.py            build
@@ -14,7 +15,8 @@ APP, MODS = os.path.join(REPO, "app"), os.path.join(REPO, "modules")
 OUT, GEN = os.path.join(REPO, "public", "app"), os.path.join(REPO, "api", "_core", "registry.gen.js")
 CORE_ROUTES = {"ping", "setup", "login", "boot", "me", "inbox"}
 LEVELS = {"do", "prepare", "raise"}
-REQ = ["id", "name", "version", "status", "order", "icon", "hue", "summary", "records", "routes", "permissions", "actions", "events", "window", "i18n", "tests"]
+REQ = ["id", "name", "version", "status", "order", "icon", "hue", "summary", "records", "routes", "permissions", "actions", "events", "queries", "window", "i18n", "tests"]
+QNAME = r"^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$"
 FILES = ["server.js", "screen.js", "test.py", "NOTES.md"]
 LANG_NAMES = {"fr": "Français", "rw": "Ikinyarwanda", "sw": "Kiswahili", "de": "Deutsch", "es": "Español", "rn": "Ikirundi", "zh": "中文", "ja": "日本語", "ko": "한국어", "ti": "ትግርኛ", "pt": "Português", "ar": "العربية"}
 TEXT = {".html", ".js", ".css", ".webmanifest", ".json", ".txt"}
@@ -54,6 +56,13 @@ def contracts():
             if a.get("level") not in LEVELS: e("action " + str(a.get("id")) + " has level " + repr(a.get("level")) + "; use do, prepare or raise")
         ev = C.get("events") or {}
         if not isinstance(ev.get("emits"), list) or not isinstance(ev.get("listens"), list): e("events needs emits and listens lists")
+        q = C.get("queries") or {}
+        if not isinstance(q.get("provides"), list) or not isinstance(q.get("uses"), list): e("queries needs provides and uses lists")
+        else:
+            for n in q["provides"] + q["uses"]:
+                if not re.match(QNAME, str(n)): e("query " + repr(n) + " must be named module.name, in lower case")
+            for n in q["provides"]:
+                if not str(n).startswith(d + "."): e("it answers " + str(n) + "; its queries are named " + d + ".<name>")
         w = C.get("window") or {}
         for k in ("zero", "one", "many", "line"):
             if not isinstance(w.get(k), str) or not w.get(k): e("window needs " + k)
@@ -65,11 +74,17 @@ def contracts():
         for f in FILES:
             if not os.path.exists(os.path.join(p, f)): e("the folder has no " + f)
         out.append(C)
-    seen = {}
+    seen, ans = {}, {}
     for C in out:
         for r in C.get("routes") or []:
             if r in seen: errs.append(C["id"] + ": route " + r + " is already served by " + seen[r])
             seen[r] = C["id"]
+        for n in (C.get("queries") or {}).get("provides") or []:
+            if n in ans: errs.append(C["id"] + ": the query " + n + " is already answered by " + ans[n])
+            ans[n] = C["id"]
+    for C in out:
+        for n in (C.get("queries") or {}).get("uses") or []:
+            if n not in ans: errs.append(C["id"] + ": it uses the query " + n + ", which no module answers")
     out.sort(key=lambda C: (C.get("order", 99), C.get("id", "")))
     return out, errs
 
@@ -80,7 +95,7 @@ def files_under(base):
 
 def version(Cs):
     h = hashlib.sha256()
-    srcs = list(files_under(APP)) + [f for C in Cs for f in files_under(os.path.join(MODS, C["id"])) if f.endswith(("module.json", "screen.js")) or "/i18n/" in f]
+    srcs = list(files_under(APP)) + [f for C in Cs for f in files_under(os.path.join(MODS, C["id"])) if f.endswith(("module.json", "screen.js", "screen.css")) or "/i18n/" in f]
     for f in srcs: h.update(os.path.relpath(f, REPO).encode()); h.update(rd(f, "rb"))
     return h.hexdigest()[:10]
 
@@ -127,6 +142,8 @@ def build(out, gen):
     for C in Cs:
         s = rd(os.path.join(MODS, C["id"], "screen.js"))
         open(os.path.join(out, "m", C["id"] + ".js"), "w", encoding="utf-8").write("/* Loop Studio · module " + C["id"] + " · built from modules/" + C["id"] + "/screen.js */\n" + s)
+        css = os.path.join(MODS, C["id"], "screen.css")
+        if os.path.exists(css): open(os.path.join(out, "m", C["id"] + ".css"), "w", encoding="utf-8").write("/* Loop Studio · module " + C["id"] + " · built from modules/" + C["id"] + "/screen.css */\n" + rd(css))
     for l, D in sorted(langs.items()):
         if l == "en": continue
         open(os.path.join(out, "i18n", l + ".json"), "w", encoding="utf-8").write(json.dumps(D, ensure_ascii=False, sort_keys=True, indent=0))
@@ -134,7 +151,7 @@ def build(out, gen):
     js = "// Generated by dev/build.py from the folders in modules/. Edit the modules, then build; never edit this file.\n"
     js += "".join('import %s from "../../modules/%s/server.js";\n' % (ident(C["id"]), C["id"]) for C in Cs)
     js += "export const V = %s;\nexport const MODULES = [\n" % json.dumps(V)
-    js += "".join("  { contract: %s, server: %s },\n" % (json.dumps(C, ensure_ascii=False, sort_keys=True), ident(C["id"])) for C in Cs)
+    js += "".join("  { contract: %s, server: %s },\n" % (json.dumps(dict(C, css=os.path.exists(os.path.join(MODS, C["id"], "screen.css"))), ensure_ascii=False, sort_keys=True), ident(C["id"])) for C in Cs)
     js += "];\n"
     open(gen, "w", encoding="utf-8").write(js)
     for f in [os.path.join(out, "shell.js"), os.path.join(out, "sw.js"), gen] + [os.path.join(out, "m", C["id"] + ".js") for C in Cs]:

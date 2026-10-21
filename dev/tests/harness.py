@@ -49,8 +49,8 @@ PHONE = {"viewport": {"width": 390, "height": 844}, "device_scale_factor": 2, "h
 SMALL = {"viewport": {"width": 360, "height": 740}, "device_scale_factor": 2, "has_touch": True, "is_mobile": True}
 LAPTOP = {"viewport": {"width": 1440, "height": 900}, "device_scale_factor": 1}
 
-async def page_for(b, tok=None, dev=None, scheme="light", store=None, wait="#main .fade", sw=False):
-    ctx = await b.new_context(**(dev or PHONE), color_scheme=scheme, service_workers="allow" if sw else "block")
+async def page_for(b, tok=None, dev=None, scheme="light", store=None, wait="#main .fade", sw=False, perms=None, hash=""):
+    ctx = await b.new_context(**(dev or PHONE), color_scheme=scheme, service_workers="allow" if sw else "block", permissions=perms or [])
     st = dict(store or {});
     if tok: st["tok"] = tok
     if st: await ctx.add_init_script('if(!sessionStorage.getItem("seeded")){localStorage.setItem("loop_studio",JSON.stringify(%s));sessionStorage.setItem("seeded","1")}' % json.dumps(st))
@@ -58,7 +58,7 @@ async def page_for(b, tok=None, dev=None, scheme="light", store=None, wait="#mai
     pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.on("console", lambda m: errs.append("console: " + m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
     pg.on("request", lambda r: outside.append(r.url) if not r.url.startswith(BASE) and not r.url.startswith("data:") else None)
-    await pg.goto(APP)
+    await pg.goto(APP + hash)
     if wait: await pg.wait_for_selector(wait, timeout=15000)
     await pg.wait_for_timeout(300)
     pg.errs, pg.outside = errs, outside

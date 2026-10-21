@@ -1,0 +1,56 @@
+/* Loop Studio · module briefs · built from modules/briefs/screen.css */
+/* Briefs · the module's own styles, loaded with its screen. Every colour, radius and easing comes from tokens.css. */
+.fb.add { color: var(--accent); }
+.bst { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--r-pill); font-size: var(--fs-2xs); font-weight: var(--fw-medium); letter-spacing: .03em; text-transform: uppercase; background: var(--fill); color: var(--text-2); vertical-align: 1px; }
+.bst-ready { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.bst-sent { background: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info); }
+.bst-built { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.link-sec { width: 100%; text-align: left; color: var(--accent); }
+.pad-b { padding: 0 16px 16px; }
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+button.card.tap { display: block; width: 100%; text-align: left; }
+button.card.tap:active { background: var(--fill); }
+.gate { margin-top: 10px; }
+.gate .gh { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.gate .gh .sp { flex: 1; }
+.gate .gl { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: var(--fs-s); color: var(--text-2); }
+.gate .gk { width: 22px; height: 22px; display: grid; place-items: center; color: var(--text-3); flex: none; }
+.gate .gk.on { color: var(--ok); }
+.gate .gp { margin: 0 0 14px; color: var(--text-2); }
+.gate > .btn { margin-top: 12px; }
+.brow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.brow .btn { flex: 1 1 140px; height: 44px; font-size: var(--fs-s); }
+.kl { margin: 8px 2px 0; }
+.brow .btn.need { flex-basis: 100%; height: auto; min-height: 56px; flex-direction: column; gap: 3px; padding: 8px 14px; }
+.btn.need .nl { display: flex; align-items: center; gap: 8px; }
+.btn.need .nk { font-size: var(--fs-xs); color: var(--text-2); font-weight: var(--fw-regular); text-align: center; }
+.btn.need .nk .mono { font-size: var(--fs-2xs); }
+.lrow { flex-wrap: wrap; gap: 8px 12px; }
+.lrow .lt-t { text-align: left; flex: 1 1 160px; min-width: 0; padding: 4px 0; font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+.lrow.need .lt-t::after { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 8px; vertical-align: 2px; }
+.lvs { display: inline-flex; background: var(--fill); border-radius: var(--r-s); padding: 2px; flex: none; }
+.lvb { height: 30px; padding: 0 10px; border-radius: calc(var(--r-s) - 2px); font-size: var(--fs-xs); color: var(--text-2); transition: background var(--dur-2), color var(--dur-2); }
+.lvb.on { background: var(--surface); box-shadow: var(--shadow-1); font-weight: var(--fw-strong); }
+.lvb.on.lv-do { color: var(--ok); } .lvb.on.lv-prepare { color: var(--info); } .lvb.on.lv-raise { color: var(--warn); }
+.lead.num { font-variant-numeric: tabular-nums; font-size: var(--fs-s); font-weight: var(--fw-medium); }
+.lead.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.chips .chip { height: auto; min-height: 28px; padding: 4px 10px; }
+.prd.draft { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--info) 45%, transparent); }
+.prd .gh { display: flex; align-items: center; gap: 8px; font-weight: var(--fw-medium); margin-bottom: 4px; flex-wrap: wrap; }
+.prd .small { margin: 0 0 10px; }
+.prd-t { max-height: 320px; overflow: auto; font-size: var(--fs-xs); line-height: var(--lh); white-space: pre-wrap; text-align: left; color: var(--text); }
+button.card.prd { display: block; width: 100%; text-align: left; }
+.in.ta.tall { min-height: 46vh; }
+.in.ta.short { min-height: 84px; }
+.mono-in { font-family: var(--font-mono); font-size: var(--fs-s); }
+.btn.rm { margin-top: 10px; color: var(--bad); }
+.btn.send { margin-top: 10px; }
+.btn.aside { margin-top: 28px; color: var(--text-2); }
+.pst { display: flex; align-items: center; gap: 6px; margin: 0 2px 12px; }
+.pst .ico { color: var(--ok); }
+.pack { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: .5px solid var(--line); border-radius: var(--r-m); padding: 14px; margin: 14px 0 0; font-size: var(--fs-xs); line-height: var(--lh); max-height: 52vh; overflow: auto; }
+.raise { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+.raise p { margin: 0; color: var(--text-2); }
+.raise .own { color: var(--text); font-weight: var(--fw-medium); }
+.keys .row { min-height: 48px; }
+@media (min-width: 760px) { .lrow { flex-wrap: nowrap; } }

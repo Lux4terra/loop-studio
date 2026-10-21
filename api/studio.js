@@ -4,19 +4,23 @@
 import { makeStore } from "./_core/store.js";
 import { makeAuth } from "./_core/auth.js";
 import { makeRegistry } from "./_core/registry.js";
+import { makeModels } from "./_core/models.js";
 import { MODULES, V } from "./_core/registry.gen.js";
 import { send, body, clean, sleep, fail, rid, now } from "./_core/util.js";
 
 const E = process.env;
 const store = makeStore(E);
 const auth = makeAuth(E);
+const ai = makeModels(E);
 const ACC = "studio/account.json", INBOX = "studio/inbox.json";
 const THEMES = ["auto", "light", "dark"], ICONS = ["sig", "quiet"], WALLS = ["mist", "dusk", "grid", "dune", "slate", "dawn"];
 const NST = ["open", "info", "done"];
 
-// the notification centre: newest first, at most 200; a key keeps one open notice per subject
+// the notification centre: newest first, at most 200; a key keeps one open notice per subject. t and x are Studio's
+// words (translated on the screen); o holds the person's own words, such as a brief's title, shown as they wrote them.
 async function notify(n) {
   const item = { id: rid("n_"), at: now(), mod: clean(n.mod, 24) || "studio", k: clean(n.k, 24) || "note", t: clean(n.t, 90), x: clean(n.x, 240), st: NST.includes(n.st) ? n.st : "info",
+    ...(n.o ? { o: clean(n.o, 120) } : {}),
     ...(n.key ? { key: clean(n.key, 60) } : {}), ...(n.go && n.go.app ? { go: { app: clean(n.go.app, 24) } } : {}) };
   await store.mutate(INBOX, () => ({ v: 1, items: [] }), d => {
     if (item.key && d.items.some(x => x.key === item.key && x.st !== "done")) return false;
@@ -25,7 +29,14 @@ async function notify(n) {
   return item;
 }
 let REG = null;
-const reg = () => REG || (REG = makeRegistry(MODULES, { store, send, notify }));
+const reg = () => REG || (REG = makeRegistry(MODULES, { store, send, notify, ai }));
+
+// the person's own day, as their device counts it (Kigali is two hours ahead of the server); within two days of now
+function dayOf(q) {
+  const d = String((q && q.day) || "");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const t = Date.parse(d + "T12:00:00Z"); if (t && Math.abs(t - Date.now()) < 2.5 * 864e5) return d; }
+  return now().slice(0, 10);
+}
 
 // the look and display a person chose, kept to known values
 function cleanLook(x, cur) {
@@ -88,8 +99,8 @@ async function who(req) {
   return { a, name: a.name };
 }
 
-async function boot(me) {
-  const R = reg(), [I, data] = await Promise.all([store.load(INBOX, () => ({ v: 1, items: [] })), R.boot(me)]);
+async function boot(me, day) {
+  const R = reg(), [I, data] = await Promise.all([store.load(INBOX, () => ({ v: 1, items: [] })), R.boot({ name: me.name, at: me.a.at, day })]);
   const seen = me.a.seenAt || "";
   return { ok: true, v: V, me: meOf(me.a), mods: R.list(), data, inbox: { items: I.items.slice(0, 80), unread: I.items.filter(x => x.at > seen && x.st !== "done").length } };
 }
@@ -139,11 +150,11 @@ async function handle(req, res) {
     const me = await who(req);
     if (!me) return send(res, 401, { error: "Please sign in again." });
     const b = req.method === "POST" ? body(req) : {};
-    if (a === "boot") return send(res, 200, await boot(me));
+    if (a === "boot") return send(res, 200, await boot(me, dayOf(q)));
     if (a === "me") return await meRoute(res, me, b);
     if (a === "inbox") return await inboxRoute(req, res, me, b);
     const r = reg().routes[a];
-    if (r) return await r.fn(req, res, { name: me.name, at: me.a.at }, b, q);
+    if (r) return await r.fn(req, res, { name: me.name, at: me.a.at, day: dayOf(q) }, b, q);
     return send(res, 400, { error: "Unknown action." });
   } catch (e) {
     if (!e || !e.http) console.error("studio error:", e && e.stack || e);

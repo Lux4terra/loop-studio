@@ -1,7 +1,7 @@
 # Loop Studio · the registry and the build: module contracts, the walls between modules, the generated registry,
 # tokens as the one source of colour, type, radius and motion, the translation layer, nothing of KERUB left, and an
 # app that installs.
-import glob, importlib.util, json, os, re, shutil, subprocess, tempfile
+import glob, gzip, importlib.util, json, os, re, shutil, subprocess, tempfile
 from harness import *
 from PIL import Image
 
@@ -23,7 +23,9 @@ for C in Cs:
     ok(C["id"] + ": its records sit under its own folder", all(r.startswith("studio/" + C["id"] + "/") for r in C["records"]), C["records"])
 gen = rd(os.path.join(REPO, "api", "_core", "registry.gen.js"))
 ok("the server's registry imports exactly the module folders", sorted(re.findall(r'from "\.\./\.\./modules/([\w-]+)/server\.js"', gen)) == IDS, re.findall(r'modules/([\w-]+)/', gen))
-ok("each module's screen is built on its own, loaded only when its app opens", sorted(f[:-3] for f in os.listdir(os.path.join(PUBLIC, "m"))) == IDS and "m/" not in rd(os.path.join(PUBLIC, "index.html")), os.listdir(os.path.join(PUBLIC, "m")))
+ok("each module's screen is built on its own, loaded only when its app opens", sorted(f[:-3] for f in os.listdir(os.path.join(PUBLIC, "m")) if f.endswith(".js")) == IDS and "m/" not in rd(os.path.join(PUBLIC, "index.html")), os.listdir(os.path.join(PUBLIC, "m")))
+CSSMODS = [i for i in IDS if os.path.exists(os.path.join(REPO, "modules", i, "screen.css"))]
+ok("a module's own styles are built beside its screen, and the registry says so", sorted(CSSMODS) == ["briefs", "today"] and all(os.path.exists(os.path.join(PUBLIC, "m", i + ".css")) for i in CSSMODS) and all(('"css": %s' % ("true" if i in CSSMODS else "false")) in gen.split('"id": "%s"' % i)[0].split("{ contract:")[-1] for i in IDS), CSSMODS)
 left = [f for f in glob.glob(PUBLIC + "/**/*", recursive=True) if os.path.isfile(f) and f.endswith((".html", ".js", ".css", ".webmanifest", ".json")) and re.search(r"__V__|__BG_\w+__", rd(f))]
 ok("no placeholder is left in what is served", not left, left)
 V = re.search(r'export const V = "(\w+)"', gen).group(1)
@@ -53,7 +55,11 @@ for label, edit, want in [
     ("a language without its file", cedit("today", lambda C: C.update(i18n=["en", "fr"])), "i18n/fr.json is missing"),
     ("a contract missing its window", cedit("today", lambda C: C.pop("window")), "the contract has no window"),
     ("an id that differs from its folder", cedit("today", lambda C: C.update(id="tomorrow")), "must match its folder"),
-    ("a folder without its test", lambda base: os.remove(os.path.join(base, "today", "test.py")), "the folder has no test.py")]:
+    ("a folder without its test", lambda base: os.remove(os.path.join(base, "today", "test.py")), "the folder has no test.py"),
+    ("a contract without its queries", cedit("builds", lambda C: C.pop("queries")), "the contract has no queries"),
+    ("a query named after another module", cedit("library", lambda C: C["queries"].update(provides=["briefs.items"])), "its queries are named library.<name>"),
+    ("a query asked that no module answers", cedit("today", lambda C: C["queries"].update(uses=["library.everything"])), "which no module answers"),
+    ("a query with a name that is not module.name", cedit("today", lambda C: C["queries"].update(uses=["Waiting"])), "must be named module.name")]:
     hit, e = bad(edit, want); ok("the build refuses " + label, hit, e)
 
 # the version follows the content
@@ -110,6 +116,8 @@ probe = {"a{color:#fff}": 1, "b{font:16px Arial}": 1, "c{transition:opacity .3s 
 ok("the token check itself catches raw values, and lets tokens through", all(bool(css_faults(k)) == bool(v) for k, v in probe.items()), {k: css_faults(k) for k in probe})
 f1 = css_faults(rd(os.path.join(REPO, "app", "shell.css")))
 ok("the shell's styles bring no colour, font, radius or easing of their own", not f1, f1[:8])
+fm = [i + ": " + x for i in CSSMODS for x in css_faults(rd(os.path.join(REPO, "modules", i, "screen.css")))]
+ok("each module's own styles bring no colour, font, radius or easing of their own", CSSMODS and not fm, fm[:8])
 js_faults = []
 for f in [os.path.join(REPO, "app", "shell.js"), os.path.join(REPO, "app", "index.html"), os.path.join(REPO, "app", "paint.js")] + glob.glob(os.path.join(REPO, "modules", "*", "screen.js")):
     s = rd(f)
@@ -117,7 +125,7 @@ for f in [os.path.join(REPO, "app", "shell.js"), os.path.join(REPO, "app", "inde
     for m in re.finditer(r'style="([^"]*)"', s): js_faults += [os.path.basename(f) + ": " + x for x in css_faults(m.group(1).replace("${", "").replace("}", "")) if "token" not in x]
 ok("the scripts and screens bring no colour, font or easing of their own", not js_faults, js_faults[:8])
 tok = rd(os.path.join(REPO, "app", "tokens.css"))
-used = set(re.findall(r"var\((--[\w-]+)", rd(os.path.join(REPO, "app", "shell.css")) + rd(os.path.join(REPO, "app", "shell.js")) + "".join(rd(f) for f in glob.glob(os.path.join(REPO, "modules", "*", "screen.js")))))
+used = set(re.findall(r"var\((--[\w-]+)", rd(os.path.join(REPO, "app", "shell.css")) + rd(os.path.join(REPO, "app", "shell.js")) + "".join(rd(f) for f in glob.glob(os.path.join(REPO, "modules", "*", "screen.*")))))
 undefined = sorted(u for u in used if not u.endswith("-") and not re.search(re.escape(u) + r"\s*:", tok) and u != "--h")
 ok("every token a screen uses is defined in tokens.css", not undefined, undefined)
 for th in ["light", "dark"]:
@@ -127,6 +135,15 @@ for th in ["light", "dark"]:
     ok("the " + th + " theme defines every colour the screens need", need <= names, need - names)
 ok("every wallpaper the screens offer is a token", all("--wall-" + w + ":" in tok for w in re.search(r'const WALLS = \[([^\]]+)\]', rd(os.path.join(REPO, "app", "shell.js"))).group(1).replace('"', "").replace(" ", "").split(",")), "")
 ok("the server keeps the same wallpapers the screen offers", re.search(r'WALLS = \[([^\]]+)\]', rd(os.path.join(REPO, "api", "studio.js"))).group(1).replace(" ", "").split(",").__len__() == 6, "")
+
+# ---------- the first-load budget ----------
+gz = lambda f: len(gzip.compress(open(f, "rb").read(), 9))
+FIRST = ["index.html", "tokens.css", "shell.css", "shell.js", "paint.js"]
+first = sum(gz(os.path.join(PUBLIC, f)) for f in FIRST)
+ok("the shell's first load stays under 25 KB compressed", first < 25 * 1024, first)
+over = {i: gz(os.path.join(PUBLIC, "m", i + ".js")) + (gz(os.path.join(PUBLIC, "m", i + ".css")) if i in CSSMODS else 0) for i in IDS}
+ok("each module's screen, with its styles, stays under 12 KB compressed", all(v < 12 * 1024 for v in over.values()), over)
+print("budget · first load %d B · %s" % (first, ", ".join("%s %d B" % kv for kv in over.items())))
 
 # ---------- nothing of KERUB left ----------
 SHIP = [os.path.join(REPO, x) for x in ("api", "app", "modules", "public")] + [os.path.join(REPO, "vercel.json"), os.path.join(REPO, "package.json")]

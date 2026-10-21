@@ -1,23 +1,42 @@
 {
   "id": "today",
   "name": "Today",
-  "version": 1,
-  "status": "slot",
+  "version": 2,
+  "status": "live",
   "order": 1,
   "dock": true,
   "icon": "sun",
   "hue": 36,
-  "summary": "One focus, the build queue, a focus timer and the morning briefing.",
-  "records": ["studio/today/day.json"],
-  "routes": ["today"],
-  "permissions": { "today.use": "Open Today and set the day's focus" },
-  "actions": [
-    { "id": "focus.set", "level": "do", "what": "Set the day's focus" },
-    { "id": "queue.order", "level": "do", "what": "Order the build queue" },
-    { "id": "briefing.write", "level": "prepare", "what": "Write the morning briefing for you to read" }
+  "summary": "One focus for the day, the queue of briefs and builds, a focus timer and the morning briefing.",
+  "records": [
+    "studio/today/day.json"
   ],
-  "events": { "emits": [], "listens": [] },
-  "window": { "zero": "No focus set yet", "one": "build in the queue", "many": "builds in the queue", "line": "One focus for the day, and the queue behind it." },
+  "routes": [
+    "today"
+  ],
+  "permissions": {
+    "today.use": "Open Today and set the day's focus"
+  },
+  "actions": [
+    { "id": "focus.set", "level": "do", "what": "Set or change the day's focus" },
+    { "id": "queue.order", "level": "do", "what": "Order the queue, or take an item off it" },
+    { "id": "timer.log", "level": "do", "what": "Log each finished focus session to the day" },
+    { "id": "briefing.write", "level": "prepare", "what": "Write the morning briefing from the day's figures, for you to read" }
+  ],
+  "events": {
+    "emits": [],
+    "listens": ["brief.sent"]
+  },
+  "queries": {
+    "provides": [],
+    "uses": ["briefs.waiting"]
+  },
+  "window": {
+    "zero": "No focus set yet",
+    "one": "waiting in the queue",
+    "many": "waiting in the queue",
+    "line": "One focus for the day, and the queue behind it."
+  },
   "i18n": ["en"],
   "tests": "test.py"
 }
